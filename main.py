@@ -216,7 +216,7 @@ def finder_inf(vacancies_full, parameter):
     )
 
 
-def print_inf(inf, req):
+def print_inf(inf, req, t_or_g):
     def take_pairs(dictionary, n):
         count = 0
         list_res = []
@@ -456,6 +456,9 @@ def print_inf(inf, req):
 
         book.save("report.xlsx")
         book.close()
+        if t_or_g == 'Вакансии':
+            os.startfile(r'report.xlsx')
+            exit(0)
 
     table()
 
@@ -638,15 +641,16 @@ def full_pdf():
 
     dirs = 'C:/Users/Cloudy/Desktop/MATVEEV/'
     file_convert_docx_pdf(dirs)
+    os.startfile(r'C:/Users/Cloudy/Desktop/MATVEEV/convert_pdf/generate_pdf.pdf')
 
 
-requests = ["Введите название файла: ", "Введите название профессии: "]
+requests = ["Введите название файла: ", "Введите название профессии: ", "Что печатать (Вакансии или Статистика)?: "]
 input_inf = [input(input_request) for input_request in requests]
 data_set = DataSet(input_inf[0])
 if len(data_set.vacancies_full_objects) != 0:
     formatted_inf = formatter_info(data_set.vacancies_full_objects)
     inf = finder_inf(formatted_inf, input_inf[1])
-    print_inf(inf, input_inf[1])
+    print_inf(inf, input_inf[1], input_inf[2])
 
 save_all_diagrams()
 
