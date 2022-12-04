@@ -1,5 +1,3 @@
-# MAKE_GRAPHS
-
 from functools import cmp_to_key
 import csv
 import openpyxl
@@ -17,13 +15,37 @@ from docx2pdf import convert
 
 
 class Salary:
-    def __init__(self, salaryFrom, salaryTo, salary_gross, salaryCurrency):
+    """ Класс для представления зарплаты
+
+    Attributes:
+        salaryFrom (int): Нижняя граница вилки оклада
+        salaryTo (int): Верхняя граница вилки оклада
+        salaryGross (int): Средняя зарплата
+        salaryCurrency (str): Валюта оклада
+    """
+
+    def __init__(self, salaryFrom, salaryTo, salaryGross, salaryCurrency):
+        """ Инициализирует объект Salary
+
+        Args:
+            salaryFrom (int): Нижняя граница вилки оклада
+            salaryTo (int): Верхняя граница вилки оклада
+            salaryGross (int or None): Средняя зарплата
+            salaryCurrency (str): Валюта оклада
+        """
+
         self.salaryFrom = salaryFrom
         self.salaryTo = salaryTo
-        self.salary_gross = salary_gross
+        self.salaryGross = salaryGross
         self.salaryCurrency = salaryCurrency
 
     def currency_to_rur(self):
+        """ Выполняет конвертацию валюты
+
+        Returns:
+            list[int]: Массив из нижних и верхних границ вилок оклада
+        """
+
         currency_to_rub = {
             "Тенге": 0.13,
             "Рубли": 1,
@@ -38,17 +60,36 @@ class Salary:
         }
         return list(
             map(
-                lambda m: int(m.replace(" ", ""))
-                          * currency_to_rub[self.salaryCurrency],
+                lambda m: int(m.replace(" ", "")) * currency_to_rub[self.salaryCurrency],
                 (self.salaryFrom, self.salaryTo),
             )
         )
 
     def get_salary(self):
+        """ Находит среднюю зарплату между верхней и нижней границами оклада
+
+        Returns:
+            float: Средняя зарплата в рублях
+        """
+
         return sum(self.currency_to_rur()) / 2
 
 
 class Vacancy:
+    """ Класс для представления вакансий
+
+    Attributes:
+        name (str): Название
+        description (str): Описание
+        skills (str): Навыки
+        experience_id (str): Опыт работы
+        premium (str): Премиум-вакансия
+        employer_name (str): Компания
+        salary (str): Идентификатор валюты оклада
+        area_name (str): Название региона
+        published_at (str): Дата и время публикации вакансии
+    """
+
     def __init__(
             self,
             name,
@@ -61,6 +102,20 @@ class Vacancy:
             area_name,
             published_at,
     ):
+        """ Инициализирует объект Vacancy
+
+        Args:
+            name (str): Название
+            description (str or None): Описание
+            skills (str or None): Навыки
+            experience_id (str or None): Опыт работы
+            premium (str or None): Премиум-вакансия
+            employer_name (str or None): Компания
+            salary (str or Salary): Идентификатор валюты оклада
+            area_name (str): Название региона
+            published_at (str): Дата и время публикации вакансии
+        """
+
         self.name = name
         self.description = description
         self.skills = skills
@@ -73,18 +128,36 @@ class Vacancy:
 
 
 def csv_reader(file_name):
+    """ Считывает csv-файл
+
+    Args:
+        file_name (str): Имя файла
+    Returns:
+        tuple[list[str], list[list[str]]]: Заголовки и столбцы
+    """
+
     with open(file_name, encoding="utf-8-sig") as p:
         reader = [k for k in csv.reader(p)]
         headers = reader.pop(0)
-        inf = list(
+        info = list(
             filter(lambda data: "" not in data and len(data) == len(headers), reader)
         )
-    return headers, inf
+    return headers, info
 
 
-def csv_filter(headers, inf):
+def csv_filter(headers, info):
+    """ Большой фильтр
+
+    Args:
+        headers (tuple[list[str]): Заголовки
+        info (tuple): Столбцы
+
+    Returns:
+        list[Vacancy]: Вакансии
+    """
+
     vacancies_full = []
-    for row_inf in inf:
+    for row_inf in info:
         list_inf = list(map(lambda m: row_inf[m], range(len(headers))))
         salary = Salary(list_inf[6], list_inf[7], list_inf[8], list_inf[9])
         skills = list_inf[2].split("__temp__")
@@ -103,9 +176,18 @@ def csv_filter(headers, inf):
     return vacancies_full
 
 
-def small_filter(inf):
+def small_filter(info):
+    """ Маленький фильтр
+
+    Args:
+        info (tuple): Столбцы
+
+    Returns:
+        list[Vacancy]: Вакансии
+    """
+
     vacancies_full = []
-    for row_inf in inf:
+    for row_inf in info:
         salary = Salary(row_inf[1], row_inf[2], None, row_inf[3])
         vacancies_full.append(
             Vacancy(
@@ -124,16 +206,33 @@ def small_filter(inf):
 
 
 class DataSet:
+    """ Датасет """
+
     def __init__(self, file_name):
-        (headers, inf) = csv_reader(file_name)
+        """ Инициализирует объект DataSet
+
+        Args:
+            file_name (str): Имя файла
+        """
+
+        (headers, info) = csv_reader(file_name)
         vacancies_full = (
-            small_filter(inf) if len(headers) <= 6 else csv_filter(headers, inf)
+            small_filter(info) if len(headers) <= 6 else csv_filter(headers, info)
         )
         self.file_name = file_name
         self.vacancies_full_objects = vacancies_full
 
 
 def formatter_info(vacancies_full):
+    """ Переводит валюту
+
+    Args:
+        vacancies_full (list[Vacancy]): Вакансии
+
+    Returns:
+        list[Vacancy]: Вакансии
+    """
+
     dic_cur = {
         "AZN": "Манаты",
         "BYR": "Белорусские рубли",
@@ -148,15 +247,39 @@ def formatter_info(vacancies_full):
     }
 
     def formatter_str_number(str_num):
+        """
+
+        Returns:
+            bool: форматировать или нет ?
+        """
+
         return str_num[: len(str_num) - 2] if -1 != str_num.find(".") else str_num
 
     def formatter_salary(value):
+        """ Форматирует валюту
+
+        Args:
+            value (Any): Валюта
+
+        Returns:
+            list[Vacancy]: Вакансии
+        """
+
         salaryFrom = formatter_str_number(value.salaryFrom)
         salaryTo = formatter_str_number(value.salaryTo)
         salaryCurrency = dic_cur[value.salaryCurrency]
         return Salary(salaryFrom, salaryTo, None, salaryCurrency)
 
     def formatter_time(value):
+        """ Форматирует время
+
+        Args:
+            value (Any): Дата с временем
+
+        Returns:
+            str: год
+        """
+
         return value[0:4]
 
     for vacancy in vacancies_full:
@@ -170,6 +293,16 @@ def formatter_info(vacancies_full):
 
 
 def finder_inf(vacancies_full, parameter):
+    """ Собирает статистику о вакансиях
+
+    Args:
+        vacancies_full (list[Vacancy]): Вакансии
+        parameter (str): Введённая профессия
+
+    Returns:
+        tuple: Вся статистика
+    """
+
     selected_v_y_count = {}
     city_level_salaries = {}
     count_vacancies_full_city = {}
@@ -216,8 +349,25 @@ def finder_inf(vacancies_full, parameter):
     )
 
 
-def print_inf(inf, req, t_or_g):
+def print_inf(info, req, t_or_g):
+    """ Печатает статистику
+
+    Args:
+        info (tuple):
+        req (str): Введённая профессия
+        t_or_g (str): Вакансии или Статистика
+    """
+
     def take_pairs(dictionary, n):
+        """
+
+        Args:
+            dictionary (dict): Словарь
+            n (int): Количество значений на печать
+
+        Returns:
+            dict: Словарь со статистикой количества вакансий и их долей по городам
+        """
         count = 0
         list_res = []
         for j in range(len(dictionary)):
@@ -236,7 +386,7 @@ def print_inf(inf, req, t_or_g):
         city_level_salaries,
         count_vacancies_full_city,
         vacancies_full_count,
-    ) = inf
+    ) = info
     (s_y_l, selected_s_y_l, city_level_salaries) = list(
         map(
             lambda dictionary: dict(
@@ -264,6 +414,16 @@ def print_inf(inf, req, t_or_g):
     )
 
     def greater_than_or_equal(dict_pair):
+        """ Учитывать только те города, в которых кол-во вакансий больше или равно 1% от
+        общего числа вакансий
+
+        Args:
+            dict_pair (tuple):
+
+        Returns:
+            bool: больше или равно 1% ?
+        """
+
         return dict_pair[1] >= 0.01
 
     count_vacancies_full_city = dict(
@@ -272,6 +432,15 @@ def print_inf(inf, req, t_or_g):
     temp = [(key, value) for key, value in count_vacancies_full_city.items()]
 
     def function(x, y):
+        """
+
+        Args:
+            x (tuple):
+            y (tuple):
+
+        Returns:
+
+        """
         return 1 if x[1] > y[1] else -1
 
     temp.sort(key=cmp_to_key(function))
@@ -285,6 +454,15 @@ def print_inf(inf, req, t_or_g):
     temp = [(key, value) for key, value in city_level_salaries.items()]
 
     def function1(x, y):
+        """
+
+        Args:
+            x (tuple):
+            y (tuple):
+
+        Returns:
+
+        """
         return 1 if x[1] > y[1] else -1
 
     temp.sort(key=cmp_to_key(function1))
@@ -311,6 +489,8 @@ def print_inf(inf, req, t_or_g):
     )
 
     def table():
+        """ Создаёт excel-файл с таблицами """
+
         book = openpyxl.Workbook()
         book.remove(book.active)
 
@@ -402,6 +582,16 @@ def print_inf(inf, req, t_or_g):
             sheet_2.append(i)
 
         def set_border(ws, cell_range):
+            """ Рисует границы у таблиц
+
+            Args:
+                ws (): Лист в таблице
+                cell_range (str): Диапазон рисования границ
+
+            Returns:
+
+            """
+
             rows = ws[cell_range]
             side = Side(border_style="medium", color="FF000000")
 
@@ -463,6 +653,13 @@ def print_inf(inf, req, t_or_g):
     table()
 
     def diagram_one(a, b):
+        """ Создаёт первую диаграмму и сохраняет её в формате png
+
+        Args:
+            a (dict): Динамика уровня зарплат по годам
+            b (dict): Динамика уровня зарплат по годам для выбранной профессии
+        """
+
         req1 = req.lower()
         labels_int = list(a.keys())
 
@@ -492,6 +689,13 @@ def print_inf(inf, req, t_or_g):
     diagram_one(s_y_l, selected_s_y_l)
 
     def diagram_two(a, b):
+        """ Создаёт вторую диаграмму и сохраняет её в формате png
+
+        Args:
+            a (dict): Динамика количества вакансий по годам
+            b (dict): Динамика количества вакансий по годам для выбранной профессии
+        """
+
         req1 = req.lower()
         labels_int = list(a.keys())
 
@@ -521,6 +725,12 @@ def print_inf(inf, req, t_or_g):
     diagram_two(count_vacancies_full_year, selected_v_y_count)
 
     def diagram_three(a):
+        """ Создаёт третью диаграмму и сохраняет её в формате png
+
+        Args:
+            a (dict): Уровень зарплат по городам (в порядке убывания)
+        """
+
         vals = list(a.keys())
         for n, i in enumerate(vals, 0):
             if " " in i:
@@ -543,6 +753,12 @@ def print_inf(inf, req, t_or_g):
     diagram_three(pair_one)
 
     def diagram_four(a):
+        """ Создаёт четвёртую диаграмму и сохраняет её в формате png
+
+        Args:
+            a (dict): Доля вакансий по городам (в порядке убывания)
+        """
+
         labels = list(a.keys())
         labels.insert(0, "Другие")
         values = list(a.values())
@@ -559,6 +775,8 @@ def print_inf(inf, req, t_or_g):
 
 
 def save_all_diagrams():
+    """ Склеивает все диаграммы в одну png-картинку и сохраняет её """
+
     IMAGES_PATH = "images/"
     IMAGES_FORMAT = [".png"]
     IMAGE_SIZE_1 = 6400
@@ -573,25 +791,24 @@ def save_all_diagrams():
         if os.path.splitext(name)[1] == item
     ]
 
-    def image_compose():
-        to_image = Image.new(
-            "RGB", (IMAGE_COLUMN * IMAGE_SIZE_1, IMAGE_ROW * IMAGE_SIZE_2)
-        )
+    to_image = Image.new(
+        "RGB", (IMAGE_COLUMN * IMAGE_SIZE_1, IMAGE_ROW * IMAGE_SIZE_2)
+    )
 
-        for y in range(1, IMAGE_ROW + 1):
-            for x in range(1, IMAGE_COLUMN + 1):
-                from_image = Image.open(
-                    IMAGES_PATH + image_names[IMAGE_COLUMN * (y - 1) + x - 1]
-                ).resize((IMAGE_SIZE_1, IMAGE_SIZE_2), Image.Resampling.LANCZOS)
-                to_image.paste(
-                    from_image, ((x - 1) * IMAGE_SIZE_1, (y - 1) * IMAGE_SIZE_2)
-                )
-        return to_image.save("graph.png")
-
-    image_compose()
+    for y in range(1, IMAGE_ROW + 1):
+        for x in range(1, IMAGE_COLUMN + 1):
+            from_image = Image.open(
+                IMAGES_PATH + image_names[IMAGE_COLUMN * (y - 1) + x - 1]
+            ).resize((IMAGE_SIZE_1, IMAGE_SIZE_2), Image.Resampling.LANCZOS)
+            to_image.paste(
+                from_image, ((x - 1) * IMAGE_SIZE_1, (y - 1) * IMAGE_SIZE_2)
+            )
+    to_image.save("graph.png")
 
 
 def make_tables_img():
+    """ Берёт таблицы из ecxel-файла и сохраняет их в формате png """
+
     xlsx_path = 'C:/Users/Cloudy/Desktop/MATVEEV/report.xlsx'
     client = win32com.client.Dispatch("Excel.Application")
     wb = client.Workbooks.Open(xlsx_path)
@@ -599,18 +816,24 @@ def make_tables_img():
     ws = wb.Worksheets("Статистика по годам")
     ws.Range("A1:E17").CopyPicture(Format=2)
     img = ImageGrab.grabclipboard()
-    img.save('to_pdf_1.jpg')
+    img.save('to_pdf_1.png')
 
     ws = wb.Worksheets("Статистика по городам")
     ws.Range("A1:E11").CopyPicture(Format=2)
     img = ImageGrab.grabclipboard()
-    img.save('to_pdf_2.jpg')
+    img.save('to_pdf_2.png')
 
     wb.Close()
     client.Quit()
 
 
 def create_docx(req):
+    """ Создаёт docx-файл со статистикой по профессии (4 диаграммы и 2 таблицы)
+
+    Args:
+        req (str): Введённая профессия
+    """
+
     docuu = docx.Document()
     style = docuu.styles['Normal']
     style.font.name = 'Verdana'
@@ -620,16 +843,20 @@ def create_docx(req):
     docuu.add_paragraph(f'                для профессии {req}')
     docuu.add_picture('graph.png', width=docx.shared.Cm(15))
     docuu.add_paragraph('                    Статистика по годам')
-    docuu.add_picture('to_pdf_1.jpg', width=docx.shared.Cm(15))
+    docuu.add_picture('to_pdf_1.png', width=docx.shared.Cm(15))
     docuu.add_paragraph()
     docuu.add_paragraph('                  Статистика по городам')
-    docuu.add_picture('to_pdf_2.jpg', width=docx.shared.Cm(15))
+    docuu.add_picture('to_pdf_2.png', width=docx.shared.Cm(15))
 
     docuu.save('generate_pdf.docx')
 
 
 def full_pdf():
+    """ Конвертирует docx-файл в pdf-файл """
+
     def file_convert_docx_pdf(p):
+        """ Конвертирует docx-файл в pdf-файл """
+
         file_in_dir = os.listdir(p)
 
         for file in file_in_dir:
